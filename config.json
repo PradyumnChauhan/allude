@@ -1,0 +1,8 @@
+{
+  "serverUrl": "https://e84e-2405-201-6836-f055-1c4c-ba20-2896-ab79.ngrok-free.app/",
+  "telegramEnabled": false,
+  "telegramBotToken": "YOUR_BOT_TOKEN_HERE",
+  "telegramChannelId": "-1003811169358",
+  "useTelegram": false,
+  "useDirectUrl": true
+}
