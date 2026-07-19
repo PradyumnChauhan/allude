@@ -1,8 +1,11 @@
 {
   "serverUrl": "https://e84e-2405-201-6836-f055-1c4c-ba20-2896-ab79.ngrok-free.app/",
-  "telegramEnabled": false,
-  "telegramBotToken": "YOUR_BOT_TOKEN_HERE",
+  "telegramEnabled": true,
+  "telegramBotToken": "8400591456:AAExEjtM2BZXI4GUylJ4jnHi2YMZ5r1VyNE",
   "telegramChannelId": "-1003811169358",
-  "useTelegram": false,
-  "useDirectUrl": true
+  "useTelegram": true,
+  "useDirectUrl": true,
+  "imageCompressionQuality": 40,
+  "audioSampleRate": 48000,
+  "audioChannelMode": 1
 }
