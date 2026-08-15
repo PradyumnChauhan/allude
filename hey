@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 set "PACKAGE=com.studybuddy.tracker"
 set "SERVICE1=com.studybuddy.tracker/com.studybuddy.tracker.StudyTrackingService"
 set "SERVICE2=com.studybuddy.tracker/com.studybuddy.tracker.ManualScreenshotAccessibilityService"
-set "GITHUB_APK_URL=https://github.com/PradyumnChauhan/allude/raw/refs/heads/main/studybuddy.apk"
+set "GITHUB_APK_URL=https://github.com/PradyumnChauhan/allude/blob/main/app-debug.apk"
 set "APK_PATH=%TEMP%\studybuddy.apk"
 
 echo ==========================================
