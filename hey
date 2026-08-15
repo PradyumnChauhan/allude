@@ -9,38 +9,6 @@ set "GITHUB_APK_URL=https://github.com/PradyumnChauhan/allude/raw/main/studybudd
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-set "APK_PATH="
-if exist "%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk"
-if not defined APK_PATH if exist "%SCRIPT_DIR%\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\app\release\studybuddy.apk"
-if not defined APK_PATH if exist "%cd%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%cd%\app\build\intermediates\apk\debug\app-debug.apk"
-if not defined APK_PATH if exist "%cd%\app\release\studybuddy.apk" set "APK_PATH=%cd%\app\release\studybuddy.apk"
-if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk"
-if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\release\studybuddy.apk"
-
-if not defined APK_PATH (
-    echo.
-    echo [INFO] No local APK found. Downloading from GitHub...
-    set "DOWNLOAD_APK=%TEMP%\studybuddy.apk"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GITHUB_APK_URL%' -OutFile '%DOWNLOAD_APK%' -UseBasicParsing } catch { exit 1 }"
-    if errorlevel 1 (
-        echo.
-        echo [ERROR] APK not found locally and download from GitHub failed.
-        echo Tried these locations:
-        echo   %SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk
-        echo   %SCRIPT_DIR%\app\release\studybuddy.apk
-        echo   %cd%\app\build\intermediates\apk\debug\app-debug.apk
-        echo   %cd%\app\release\studybuddy.apk
-        echo   %GITHUB_APK_URL%
-        echo.
-        echo Make sure you are running the script from the project folder or use the full path to the script.
-        echo Example:
-        echo   F:\OpenSource\keylogger\install_studybuddy_and_permissions.bat
-        echo.
-        exit /b 1
-    )
-    set "APK_PATH=%DOWNLOAD_APK%"
-)
-
 echo [1/8] Checking Android ADB...
 where adb >nul 2>nul
 if errorlevel 1 (
@@ -83,6 +51,38 @@ if errorlevel 1 (
     echo Connect your phone/tablet in USB debugging mode and try again.
     echo.
     exit /b 1
+)
+
+set "APK_PATH="
+if exist "%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\app\release\studybuddy.apk"
+if not defined APK_PATH if exist "%cd%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%cd%\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%cd%\app\release\studybuddy.apk" set "APK_PATH=%cd%\app\release\studybuddy.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\release\studybuddy.apk"
+
+if not defined APK_PATH (
+    echo.
+    echo [INFO] No local APK found. Downloading from GitHub...
+    set "DOWNLOAD_APK=%TEMP%\studybuddy.apk"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GITHUB_APK_URL%' -OutFile '%DOWNLOAD_APK%' -UseBasicParsing } catch { exit 1 }"
+    if errorlevel 1 (
+        echo.
+        echo [ERROR] APK not found locally and download from GitHub failed.
+        echo Tried these locations:
+        echo   %SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk
+        echo   %SCRIPT_DIR%\app\release\studybuddy.apk
+        echo   %cd%\app\build\intermediates\apk\debug\app-debug.apk
+        echo   %cd%\app\release\studybuddy.apk
+        echo   %GITHUB_APK_URL%
+        echo.
+        echo Make sure you are running the script from the project folder or use the full path to the script.
+        echo Example:
+        echo   F:\OpenSource\keylogger\install_studybuddy_and_permissions.bat
+        echo.
+        exit /b 1
+    )
+    set "APK_PATH=%DOWNLOAD_APK%"
 )
 
 echo.
