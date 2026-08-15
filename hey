@@ -138,9 +138,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [9/9] Starting app...
-adb shell monkey -p %PACKAGE% -c android.intent.category.LAUNCHER 1 >nul 2>&1
-
+echo [9/9] Finalizing...
 echo.
 echo ==========================================
 echo   ✅ Installation and setup complete
@@ -154,6 +152,8 @@ echo.
 echo On the device, confirm the accessibility services
 echo and enable "Display over other apps" if prompted.
 echo.
+echo The app has been installed but not launched.
+echo You can open it manually from the app drawer.
 
 if exist "!APK_PATH!" del /q "!APK_PATH!" >nul 2>&1
 echo Temporary APK deleted.
