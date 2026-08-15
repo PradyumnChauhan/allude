@@ -70,20 +70,20 @@ if not defined APK_PATH (
     echo.
     echo [INFO] No local APK found. Downloading from GitHub...
     set "DOWNLOAD_APK=%TEMP%\studybuddy.apk"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GITHUB_APK_URL%' -OutFile '%DOWNLOAD_APK%' -UseBasicParsing } catch { exit 1 }"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GITHUB_APK_URL%' -OutFile '!DOWNLOAD_APK!' -UseBasicParsing } catch { exit 1 }"   # FIX: use !DOWNLOAD_APK!
     if errorlevel 1 (
         echo [ERROR] APK download failed.
         exit /b 1
     )
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%DOWNLOAD_APK%'; if (-not $p.ToLower().EndsWith('.apk')) { Write-Error 'Downloaded file is not an APK'; exit 10 }; $fi = Get-Item $p; if ($fi.Length -lt 500000) { Write-Error ('Downloaded APK looks too small: ' + $fi.Length + ' bytes'); exit 11 }; Write-Host 'APK validation passed: ' $fi.FullName 'Size=' $fi.Length"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='!DOWNLOAD_APK!'; if (-not $p.ToLower().EndsWith('.apk')) { Write-Error 'Downloaded file is not an APK'; exit 10 }; $fi = Get-Item $p; if ($fi.Length -lt 500000) { Write-Error ('Downloaded APK looks too small: ' + $fi.Length + ' bytes'); exit 11 }; Write-Host 'APK validation passed: ' $fi.FullName 'Size=' $fi.Length"   # FIX: use !DOWNLOAD_APK!
     if errorlevel 1 (
         echo [ERROR] Downloaded file is not a valid APK.
         echo The GitHub URL may not be serving a real APK.
         exit /b 1
     )
 
-    set "APK_PATH=%DOWNLOAD_APK%"
+    set "APK_PATH=!DOWNLOAD_APK!"   # FIX: use !DOWNLOAD_APK!
 )
 
 echo.
@@ -127,7 +127,6 @@ adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow 2>nul
 adb shell pm grant %PACKAGE% android.permission.POST_NOTIFICATIONS 2>nul
 adb shell pm grant %PACKAGE% android.permission.READ_PHONE_STATE 2>nul
 
-
 echo.
 echo [6/9] Enabling accessibility services...
 set "ACCESS_SERVICES="
@@ -143,7 +142,6 @@ if not defined ACCESS_SERVICES (
 adb shell settings put secure enabled_accessibility_services "!ACCESS_SERVICES!"
 adb shell settings put secure accessibility_enabled 1
 
-
 echo.
 echo [7/9] Opening Android settings for accessibility and overlay...
 adb shell am start -n com.android.settings/.Settings$AccessibilitySettingsActivity 2>nul
@@ -156,11 +154,9 @@ if errorlevel 1 (
     adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow
 )
 
-
 echo.
 echo [8/9] Starting app...
 adb shell monkey -p %PACKAGE% -c android.intent.category.LAUNCHER 1 >nul 2>&1
-
 
 echo.
 echo [9/9] Finalizing...
