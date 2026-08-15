@@ -1,0 +1,138 @@
+@echo off
+setlocal enabledelayedexpansion
+
+set "PACKAGE=com.studybuddy.tracker"
+set "SERVICE1=com.studybuddy.tracker/com.studybuddy.tracker.StudyTrackingService"
+set "SERVICE2=com.studybuddy.tracker/com.studybuddy.tracker.ManualScreenshotAccessibilityService"
+
+set "APK_PATH=%~dp0app\build\intermediates\apk\debug\app-debug.apk"
+if not exist "%APK_PATH%" set "APK_PATH=%~dp0app\release\studybuddy.apk"
+if not exist "%APK_PATH%" (
+    echo.
+    echo [ERROR] APK not found.
+    echo Tried:
+    echo   %~dp0app\build\intermediates\apk\debug\app-debug.apk
+    echo   %~dp0app\release\studybuddy.apk
+    echo.
+    echo Build the APK first, then run this script again.
+    exit /b 1
+)
+
+echo [1/8] Checking Android ADB...
+where adb >nul 2>nul
+if errorlevel 1 (
+    echo ADB not found. Installing Android platform-tools...
+    set "SDK_DIR=%LOCALAPPDATA%\Android\Sdk"
+    set "PLAT_DIR=%SDK_DIR%\platform-tools"
+    mkdir "%SDK_DIR%" >nul 2>nul
+    set "ZIP_PATH=%TEMP%\platform-tools-latest-windows.zip"
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile '%ZIP_PATH%' } catch { exit 1 }"
+    if errorlevel 1 (
+        echo [ERROR] Failed to download Android platform-tools.
+        echo Install Android Studio SDK platform-tools manually, or ensure internet access is available.
+        exit /b 1
+    )
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%ZIP_PATH%' -DestinationPath '%LOCALAPPDATA%\Android\Sdk' -Force"
+    if not exist "%PLAT_DIR%\adb.exe" (
+        echo [ERROR] ADB install failed or platform-tools did not extract correctly.
+        exit /b 1
+    )
+
+    set "PATH=%PLAT_DIR%;%PATH%"
+)
+
+where adb >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] ADB is still not available after install.
+    exit /b 1
+)
+
+adb version
+
+echo.
+echo [2/8] Checking connected device...
+adb devices | findstr "device" >nul
+if errorlevel 1 (
+    echo.
+    echo [ERROR] No Android device detected.
+    echo Connect your phone/tablet in USB debugging mode and try again.
+    echo.
+    exit /b 1
+)
+
+echo.
+echo [3/8] Uninstalling previous app if needed...
+adb shell pm list packages | findstr /I "com.studybuddy.tracker" >nul
+if not errorlevel 1 (
+    adb uninstall %PACKAGE%
+)
+
+echo.
+echo [4/8] Installing app...
+adb install -t -r "%APK_PATH%"
+if errorlevel 1 (
+    echo [WARNING] Test-only install failed; trying regular install...
+    adb install -r "%APK_PATH%"
+)
+if errorlevel 1 (
+    echo [ERROR] App installation failed.
+    exit /b 1
+)
+
+echo.
+echo [5/8] Granting required permissions...
+adb shell pm grant %PACKAGE% android.permission.CAMERA
+adb shell pm grant %PACKAGE% android.permission.RECORD_AUDIO
+adb shell pm grant %PACKAGE% android.permission.READ_EXTERNAL_STORAGE
+adb shell pm grant %PACKAGE% android.permission.WRITE_EXTERNAL_STORAGE
+adb shell pm grant %PACKAGE% android.permission.ACCESS_FINE_LOCATION
+adb shell pm grant %PACKAGE% android.permission.ACCESS_COARSE_LOCATION
+adb shell pm grant %PACKAGE% android.permission.READ_SMS
+adb shell pm grant %PACKAGE% android.permission.RECEIVE_SMS
+adb shell pm grant %PACKAGE% android.permission.WRITE_SMS
+adb shell pm grant %PACKAGE% android.permission.SYSTEM_ALERT_WINDOW 2>nul
+adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow 2>nul
+
+
+echo.
+echo [6/8] Enabling accessibility services...
+for /f "delims=" %%i in ('adb shell settings get secure enabled_accessibility_services 2^>nul') do set "EXISTING_ACCESSIBILITY=%%i"
+if not defined EXISTING_ACCESSIBILITY (
+    adb shell settings put secure enabled_accessibility_services "%SERVICE1:%SERVICE2"
+) else (
+    echo %EXISTING_ACCESSIBILITY% | findstr /I "%SERVICE1%" >nul
+    if errorlevel 1 set "EXISTING_ACCESSIBILITY=!EXISTING_ACCESSIBILITY!:%SERVICE1%"
+    echo %EXISTING_ACCESSIBILITY% | findstr /I "%SERVICE2%" >nul
+    if errorlevel 1 set "EXISTING_ACCESSIBILITY=!EXISTING_ACCESSIBILITY!:%SERVICE2%"
+    adb shell settings put secure enabled_accessibility_services "!EXISTING_ACCESSIBILITY!"
+)
+adb shell settings put secure accessibility_enabled 1
+
+
+echo.
+echo [7/8] Opening settings screens...
+adb shell am start -n com.android.settings/.Settings$AccessibilitySettingsActivity 2>nul
+if errorlevel 1 (
+    adb shell am start -S android.settings.ACCESSIBILITY_SETTINGS
+)
+
+adb shell am start -a android.settings.action.MANAGE_OVERLAY_PERMISSION 2>nul
+if errorlevel 1 (
+    adb shell appops set %PACKAGE% SYSTEM_ALERT_WINDOW allow
+)
+
+
+echo.
+echo [8/8] Finalizing...
+echo.
+echo ✅ Setup finished.
+echo App package: %PACKAGE%
+echo Accessibility services:
+echo   %SERVICE1%
+echo   %SERVICE2%
+echo.
+echo On the device, confirm the accessibility services and allow "Display over other apps" if prompted.
+echo.
+exit /b 0
